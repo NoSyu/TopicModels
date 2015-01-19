@@ -68,9 +68,9 @@ class CollasedGibbs:
                     word = doc[wi]
                     old_topic = self.doc_topics[di][wi]
 
-                    self.WK[word,old_topic] -= 1
+                    self.WK[word, old_topic] -= 1
                     self.sumK[old_topic] -= 1
-                    self.doc_topic_sum[di,old_topic] -= 1
+                    self.doc_topic_sum[di, old_topic] -= 1
 
                     #update
                     prob = (self.WK[word, :])/(self.sumK[:]) * (self.doc_topic_sum[di,:])
@@ -105,6 +105,23 @@ class CollasedGibbs:
 
         return ll
 
+
+    def optimize(self):
+        """
+        Optimize hyperparameters
+        :return: void
+        """
+        # Not implemented yet
+        pass
+
+
+    def ExportResultCSV(self, output_file_name):
+        """
+        Export Algorithm Result to File
+        :return:
+        """
+        # Not implemented yet
+        pass
 
 if __name__ == '__main__':
     #test
