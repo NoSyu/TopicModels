@@ -15,55 +15,59 @@ class CollasedGibbs:
     Original code is coming from
     https://github.com/arongdari/python-topic-model
     """
-    def __init__(self, numtopic, numword, alpha=0.1, beta=0.01):
-        self.K = numtopic
-        self.W = numword
+    def __init__(self, numtopic, docs, words, alpha=0.1, beta=0.01):
+        """
 
-        #hyper-parameters
+        :param numtopic:
+        :param docs:
+        :param words:
+        :param alpha:
+        :param beta:
+        :return:
+        """
+        self.docs = docs
+        self.words = words
+        self.K = numtopic
+        self.D = len(docs)
+        self.W = len(words)
+
+        # Hyper-parameters
         self.alpha = alpha
         self.beta = beta
 
-    def random_init(self, docs):
-        """
-        Random initialization of topics
-        """
-        print 'random init'
-        #summary statistics
-
-        self.WK = numpy.zeros([self.W,self.K]) + self.beta
+        self.WK = numpy.zeros([self.W, self.K]) + self.beta
         self.sumK = numpy.zeros([self.K]) + self.beta * self.W
-        self.doc_topic_sum = numpy.zeros([len(docs), self.K]) + self.alpha
+        self.doc_topic_sum = numpy.zeros([self.D, self.K]) + self.alpha
 
-        #topic assignments
+        # Random initialization of topics
         self.doc_topics = list()
 
-        for di in xrange(len(docs)):
-            doc = docs[di]
+        for di in xrange(self.D):
+            doc = self.docs[di]
             topics = numpy.random.randint(self.K, size=len(doc))
             self.doc_topics.append(topics)
 
             for wi in xrange(len(doc)):
                 topic = topics[wi]
                 word = doc[wi]
-                self.WK[word,topic] += 1
-                self.sumK[topic] +=1
+                self.WK[word, topic] += 1
+                self.sumK[topic] += 1
                 self.doc_topic_sum[di, topic] += 1
 
-    def gibbs_sampling(self, max_iter, docs):
+    def gibbs_sampling(self, max_iter):
         """
         Argument:
         max_iter:
-        docs:
         """
         prev = time.clock()
 
         for iteration in xrange(max_iter):
 
-            print iteration, time.clock() - prev, self.loglikelihood(docs)
+            print iteration, time.clock() - prev, self.loglikelihood()
             prev = time.clock()
 
-            for di in xrange(len(docs)):
-                doc = docs[di]
+            for di in xrange(self.D):
+                doc = self.docs[di]
                 for wi in xrange(len(doc)):
                     word = doc[wi]
                     old_topic = self.doc_topics[di][wi]
@@ -73,7 +77,8 @@ class CollasedGibbs:
                     self.doc_topic_sum[di, old_topic] -= 1
 
                     #update
-                    prob = (self.WK[word, :])/(self.sumK[:]) * (self.doc_topic_sum[di,:])
+                    prob = ((self.WK[word, :]) / (self.sumK[:]))\
+                           * (self.doc_topic_sum[di, :])
 
                     #new_topic = sampling_from_dist(prob)
                     prob_sum = prob.sum()
@@ -83,28 +88,25 @@ class CollasedGibbs:
                     self.doc_topics[di][wi] = new_topic
                     self.WK[word,new_topic] += 1
                     self.sumK[new_topic] += 1
-                    self.doc_topic_sum[di,new_topic] += 1
+                    self.doc_topic_sum[di, new_topic] += 1
 
-        #print 'sampling done'
-
-    def loglikelihood(self, docs):
+    def loglikelihood(self):
         """
         likelihood function
         """
         ll = 0
 
-        ll += len(docs) * gammaln(self.alpha*self.K)
-        ll -= len(docs) * self.K * gammaln(self.alpha)
-        ll += self.K * gammaln(self.beta*self.W)
+        ll += self.D * gammaln(self.alpha * self.K)
+        ll -= self.D * self.K * gammaln(self.alpha)
+        ll += self.K * gammaln(self.beta * self.W)
         ll -= self.K * self.W * gammaln(self.beta)
 
-        for di in xrange(len(docs)):
-            ll += gammaln(self.doc_topic_sum[di,:]).sum() - gammaln(self.doc_topic_sum[di,:].sum())
+        for di in xrange(self.D):
+            ll += gammaln(self.doc_topic_sum[di, :]).sum() - gammaln(self.doc_topic_sum[di, :].sum())
         for ki in xrange(self.K):
-            ll += gammaln(self.WK[:,ki]).sum() - gammaln(self.WK[:,ki].sum())
+            ll += gammaln(self.WK[:, ki]).sum() - gammaln(self.WK[:, ki].sum())
 
         return ll
-
 
     def optimize(self):
         """
@@ -114,14 +116,25 @@ class CollasedGibbs:
         # Not implemented yet
         pass
 
-
-    def ExportResultCSV(self, output_file_name):
+    def ExportResultCSV(self, output_file_name, rank_idx=100):
         """
         Export Algorithm Result to File
-        :return:
+        :return: void
         """
-        # Not implemented yet
-        pass
+        # Raw data
+        numpy.savetxt("WK_%s.csv" % output_file_name, self.WK, delimiter=",")
+        numpy.savetxt("doc_topic_sum_%s.csv" % output_file_name, self.doc_topic_sum, delimiter=",")
+
+        # Ranked data
+        with open("KW_Ranked_%s.csv" % output_file_name, "w") as ranked_topic_word_file:
+            for topic_idx in xrange(self.K):
+                temp_pair = zip(self.WK[:, topic_idx], xrange(self.W))
+                temp_sorted_pair = sorted(temp_pair, key = lambda x: x[0], reverse=True)
+                temp_str = 'topic %d,' % topic_idx
+                for idx in xrange(rank_idx):
+                    temp_str += '%s %.6f,' % (self.words[temp_sorted_pair[idx][1]], temp_sorted_pair[idx][0])
+                print >>ranked_topic_word_file, temp_str
+
 
 if __name__ == '__main__':
     #test
