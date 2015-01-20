@@ -54,41 +54,66 @@ class CollasedGibbs:
                 self.sumK[topic] += 1
                 self.doc_topic_sum[di, topic] += 1
 
-    def gibbs_sampling(self, max_iter):
+    def run(self, max_iter=2000, do_optimize=False, do_print_log=False):
         """
-        Argument:
-        max_iter:
+        Run Collasped Gibbs sampling for LDA
+        :param max_iter: Maximum number of gibbs sampling iteration
+        :param do_optimize: Do run optimize hyper-parameters
+        :param do_print_log: Do print loglikelihood and run time
+        :return: void
         """
-        prev = time.clock()
 
-        for iteration in xrange(max_iter):
-
-            print iteration, time.clock() - prev, self.loglikelihood()
+        if do_optimize and do_print_log:
             prev = time.clock()
+            for iteration in xrange(max_iter):
+                print iteration, time.clock() - prev, self.loglikelihood()
+                prev = time.clock()
+                self._gibbs_sampling(max_iter)
+                if 99 == iteration % 100:
+                    self._optimize()
+        elif do_optimize and not do_print_log:
+            for iteration in xrange(max_iter):
+                self._gibbs_sampling(max_iter)
+                if 99 == iteration % 100:
+                    self._optimize()
+        elif not do_optimize and do_print_log:
+            prev = time.clock()
+            for iteration in xrange(max_iter):
+                print iteration, time.clock() - prev, self.loglikelihood()
+                prev = time.clock()
+                self._gibbs_sampling(max_iter)
+        else:
+            for iteration in xrange(max_iter):
+                self._gibbs_sampling(max_iter)
 
-            for di in xrange(self.D):
-                doc = self.docs[di]
-                for wi in xrange(len(doc)):
-                    word = doc[wi]
-                    old_topic = self.doc_topics[di][wi]
+    def _gibbs_sampling(self):
+        """
+        Run Gibbs Sampling
+        :return: void
+        """
+        for di in xrange(self.D):
+            doc = self.docs[di]
+            for wi in xrange(len(doc)):
+                word = doc[wi]
+                old_topic = self.doc_topics[di][wi]
 
-                    self.WK[word, old_topic] -= 1
-                    self.sumK[old_topic] -= 1
-                    self.doc_topic_sum[di, old_topic] -= 1
+                self.WK[word, old_topic] -= 1
+                self.sumK[old_topic] -= 1
+                self.doc_topic_sum[di, old_topic] -= 1
 
-                    #update
-                    prob = ((self.WK[word, :]) / (self.sumK[:]))\
-                           * (self.doc_topic_sum[di, :])
+                #update
+                prob = ((self.WK[word, :]) / (self.sumK[:]))\
+                       * (self.doc_topic_sum[di, :])
 
-                    #new_topic = sampling_from_dist(prob)
-                    prob_sum = prob.sum()
-                    prob = prob / prob_sum
-                    new_topic = (numpy.random.multinomial(1, prob))[0]
+                #new_topic = sampling_from_dist(prob)
+                prob_sum = prob.sum()
+                prob = prob / prob_sum
+                new_topic = (numpy.random.multinomial(1, prob))[0]
 
-                    self.doc_topics[di][wi] = new_topic
-                    self.WK[word,new_topic] += 1
-                    self.sumK[new_topic] += 1
-                    self.doc_topic_sum[di, new_topic] += 1
+                self.doc_topics[di][wi] = new_topic
+                self.WK[word, new_topic] += 1
+                self.sumK[new_topic] += 1
+                self.doc_topic_sum[di, new_topic] += 1
 
     def loglikelihood(self):
         """
@@ -215,12 +240,3 @@ class CollasedGibbs:
                 for idx in xrange(rank_idx):
                     temp_str += '%s %.6f,' % (self.words[temp_sorted_pair[idx][1]], temp_sorted_pair[idx][0])
                 print >>ranked_topic_word_file, temp_str
-
-
-if __name__ == '__main__':
-    #test
-    docs = [[0,1,2,3,3,4,3,4,5], [2,3,3,5,6,7,8,3,8,9,5]]
-
-    model = CollasedGibbs(2, 10)
-    model.random_init(docs)
-    model.gibbs_sampling(100,docs)
