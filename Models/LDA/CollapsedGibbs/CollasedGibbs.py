@@ -1,6 +1,6 @@
 import time
 import numpy
-from scipy.special import gammaln
+from scipy.special import gammaln, psi
 
 __author__ = 'NoSyu'
 
@@ -92,29 +92,110 @@ class CollasedGibbs:
 
     def loglikelihood(self):
         """
-        likelihood function
+        Compute log likelihood function
+        :return: log likelihood function
         """
-        ll = 0
+        return self._topic_loglikelihood() + self._document_loglikelihood()
 
-        ll += self.D * gammaln(self.alpha * self.K)
-        ll -= self.D * self.K * gammaln(self.alpha)
-        ll += self.K * gammaln(self.beta * self.W)
+    def _topic_loglikelihood(self):
+        """
+        Compute log likelihood by topics
+        :return: log likelihood by topics
+        """
+        ll = self.K * gammaln(self.beta * self.W)
         ll -= self.K * self.W * gammaln(self.beta)
 
-        for di in xrange(self.D):
-            ll += gammaln(self.doc_topic_sum[di, :]).sum() - gammaln(self.doc_topic_sum[di, :].sum())
         for ki in xrange(self.K):
             ll += gammaln(self.WK[:, ki]).sum() - gammaln(self.WK[:, ki].sum())
 
         return ll
 
-    def optimize(self):
+    def _document_loglikelihood(self):
+        """
+        Compute log likelihood by documents
+        :return: log likelihood by documents
+        """
+        ll = self.D * gammaln(self.alpha * self.K)
+        ll -= self.D * self.K * gammaln(self.alpha)
+
+        for di in xrange(self.D):
+            ll += gammaln(self.doc_topic_sum[di, :]).sum() - gammaln(self.doc_topic_sum[di, :].sum())
+
+        return ll
+
+    def _optimize(self):
         """
         Optimize hyperparameters
         :return: void
         """
-        # Not implemented yet
-        pass
+        self._alphaoptimize()
+        self._betaoptimize()
+
+    def _alphaoptimize(self, conv_threshold=0.001):
+        """
+        Optimize alpha vector
+        :return: void
+        """
+        is_converge = False
+        old_ll = self._topic_loglikelihood()
+
+        while not is_converge:
+            alpha_sum = self.alpha.sum()
+            alpha_temp = numpy.zeros([self.K])
+
+            for topic_idx in xrange(self.K):
+                numerator = psi(self.doc_topic_sum[:, topic_idx] + self.alpha[topic_idx]).sum() - (self.D * psi(self.alpha[topic_idx]))
+                denominator = psi(map(self.docs, lambda x: len(x)) + alpha_sum).sum() - (self.D * psi(alpha_sum))
+
+                alpha_temp[topic_idx] = self.alpha[topic_idx] * (numerator / denominator)
+
+                if alpha_temp[topic_idx] <= 0:
+                    return
+
+            self.alpha = alpha_temp
+
+            new_ll = self._topic_loglikelihood()
+
+            if abs(new_ll - old_ll) < conv_threshold:
+                is_converge = True
+            else:
+                old_ll = new_ll
+
+    def _betaoptimize(self, conv_threshold=0.001):
+        """
+        Optimize beta value
+        :return: void
+        """
+        is_converge = False
+        old_ll = self._document_loglikelihood()
+
+        while not is_converge:
+            beta_sum = self.beta * self.W
+            #beta_temp = numpy.zeros([self.K])
+            numerator = 0
+            denominator = 0
+
+            for topic_idx in xrange(self.K):
+                numerator += psi(self.WK[:, topic_idx] + self.beta).sum()
+                denominator += psi(self.sumK[topic_idx] + beta_sum)
+
+            numerator -= self.W * self.K * psi(self.beta)
+            denominator -= self.K * psi(beta_sum)
+            denominator *= self.W
+
+            beta_temp = self.beta * (numerator / denominator)
+
+            if beta_temp <= 0:
+                return
+
+            self.beta = beta_temp
+
+            new_ll = self._document_loglikelihood()
+
+            if abs(new_ll - old_ll) < conv_threshold:
+                is_converge = True
+            else:
+                old_ll = new_ll
 
     def ExportResultCSV(self, output_file_name, rank_idx=100):
         """
@@ -129,7 +210,7 @@ class CollasedGibbs:
         with open("KW_Ranked_%s.csv" % output_file_name, "w") as ranked_topic_word_file:
             for topic_idx in xrange(self.K):
                 temp_pair = zip(self.WK[:, topic_idx], xrange(self.W))
-                temp_sorted_pair = sorted(temp_pair, key = lambda x: x[0], reverse=True)
+                temp_sorted_pair = sorted(temp_pair, key=lambda x: x[0], reverse=True)
                 temp_str = 'topic %d,' % topic_idx
                 for idx in xrange(rank_idx):
                     temp_str += '%s %.6f,' % (self.words[temp_sorted_pair[idx][1]], temp_sorted_pair[idx][0])
