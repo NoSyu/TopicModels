@@ -19,14 +19,29 @@ def Read_BOW_docs_for_Gibbs(file_path):
         for each_line in bow_file:
             splitline = splitexp.split(each_line)
             cur_doc = []
-            doc_id = splitline[0]
+            #doc_id = splitline[0]
             wordids = [int(x) for x in splitline[2::2]]
             wordcounts = [int(x) for x in splitline[3::2]]
 
             for wordid, wordct in zip(wordids, wordcounts):
-                for each_time in wordct:
+                for each_time in xrange(wordct):
                     cur_doc.append(wordid)
 
             docs.append(cur_doc)
 
     return docs
+
+
+def Read_Voca_File(file_path):
+    """
+    Read vocabulary file
+    :param file_path: The path of vocabulary file
+    :return: vocabulary list
+    """
+    vocas = []
+
+    with open(file_path, 'r') as voca_file:
+        for each_line in voca_file:
+            vocas.append(each_line.strip())
+
+    return vocas

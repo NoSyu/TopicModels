@@ -5,7 +5,7 @@ from scipy.special import gammaln, psi
 __author__ = 'NoSyu'
 
 
-class CollasedGibbs:
+class CollapsedGibbs:
     """
     Latent dirichlet allocation,
     Blei, David M and Ng, Andrew Y and Jordan, Michael I, 2003
@@ -56,7 +56,7 @@ class CollasedGibbs:
 
     def run(self, max_iter=2000, do_optimize=False, do_print_log=False):
         """
-        Run Collasped Gibbs sampling for LDA
+        Run Collapsed Gibbs sampling for LDA
         :param max_iter: Maximum number of gibbs sampling iteration
         :param do_optimize: Do run optimize hyper-parameters
         :param do_print_log: Do print loglikelihood and run time
@@ -68,12 +68,12 @@ class CollasedGibbs:
             for iteration in xrange(max_iter):
                 print iteration, time.clock() - prev, self.loglikelihood()
                 prev = time.clock()
-                self._gibbs_sampling(max_iter)
+                self._gibbs_sampling()
                 if 99 == iteration % 100:
                     self._optimize()
         elif do_optimize and not do_print_log:
             for iteration in xrange(max_iter):
-                self._gibbs_sampling(max_iter)
+                self._gibbs_sampling()
                 if 99 == iteration % 100:
                     self._optimize()
         elif not do_optimize and do_print_log:
@@ -81,10 +81,10 @@ class CollasedGibbs:
             for iteration in xrange(max_iter):
                 print iteration, time.clock() - prev, self.loglikelihood()
                 prev = time.clock()
-                self._gibbs_sampling(max_iter)
+                self._gibbs_sampling()
         else:
             for iteration in xrange(max_iter):
-                self._gibbs_sampling(max_iter)
+                self._gibbs_sampling()
 
     def _gibbs_sampling(self):
         """
@@ -105,15 +105,26 @@ class CollasedGibbs:
                 prob = ((self.WK[word, :]) / (self.sumK[:]))\
                        * (self.doc_topic_sum[di, :])
 
-                #new_topic = sampling_from_dist(prob)
-                prob_sum = prob.sum()
-                prob = prob / prob_sum
-                new_topic = (numpy.random.multinomial(1, prob))[0]
+                new_topic = self._sampling_from_dist(prob)
 
                 self.doc_topics[di][wi] = new_topic
                 self.WK[word, new_topic] += 1
                 self.sumK[new_topic] += 1
                 self.doc_topic_sum[di, new_topic] += 1
+
+    def _sampling_from_dist(self, prob):
+        """
+        Multinomial sampling with probability vector
+        :param prob: probability vector
+        :return: a new sample (In this class, it is new topic index)
+        """
+        thr = prob.sum() * numpy.random.rand()
+        new_topic=0
+        tmp = prob[new_topic]
+        while tmp < thr:
+            new_topic += 1
+            tmp += prob[new_topic]
+        return new_topic
 
     def loglikelihood(self):
         """
