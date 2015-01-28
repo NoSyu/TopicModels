@@ -15,5 +15,6 @@ Example dataset
 
 
 PS
+
 Java implementation of Bayesian Topic Models (https://github.com/NoSyu/Topic_Models) was sold to the company, so we do not open it as public.
 Instead, we implement Bayesian Topic Models by Python for avoiding license issues.
