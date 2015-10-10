@@ -13,5 +13,7 @@ if __name__ == '__main__':
     vocas = Utils.Documents.Read_Voca_File(voca_file_path)
 
     LDAModel = VariationalEM.VariationalEM(30, docs, vocas)
-    LDAModel.run(max_iter=10, do_print_log=True)
-    # LDAModel.ExportResultCSV('LDA_VI_ap_news_30')
+    LDAModel.run(max_iter=200, do_print_log=True)
+    LDAModel.ExportResultCSV('LDA_VI_ap_news_30')
+
+    print 'Done LDA VI'
