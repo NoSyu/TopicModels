@@ -1,5 +1,3 @@
-__author__ = 'NoSyu'
-
 """
     Functions for handling documents
 """
@@ -24,7 +22,7 @@ def Read_BOW_docs_for_Gibbs(file_path):
     :return: documents list
     """
     splitexp = re.compile(r'[ :]')
-    docs = []
+    docs = list()
 
     with open(file_path, 'r') as bow_file:
         for each_line in bow_file:
@@ -42,6 +40,7 @@ def Read_BOW_docs_for_Gibbs(file_path):
 
     return docs
 
+
 def Read_BOW_docs_for_VI(file_path):
     """
     Read BOW file to run topic models with Variational Inference
@@ -49,7 +48,7 @@ def Read_BOW_docs_for_VI(file_path):
     :return: documents list
     """
     splitexp = re.compile(r'[ :]')
-    docs = []
+    docs = list()
 
     with open(file_path, 'r') as bow_file:
         for each_line in bow_file:
@@ -71,7 +70,7 @@ def Read_Voca_File(file_path):
     :param file_path: The path of vocabulary file
     :return: vocabulary list
     """
-    vocas = []
+    vocas = list()
 
     with open(file_path, 'r') as voca_file:
         for each_line in voca_file:
